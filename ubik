@@ -45,5 +45,5 @@ if [[ `which VBoxManage` ]]; then
 	done
 else
 	# we're the guest! let's become the host.
-	exit
+	kill -HUP `pgrep -s 0 -o`
 fi
