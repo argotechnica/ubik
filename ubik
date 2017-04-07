@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# "Ubik ... Safe when taken as directed."
+#
+# Inspired by PKD's book of the same name, this script seamlessly transports
+# the user between machines, starting and stopping as necessary. Assumptions:
+# running Cygywin on Windows, running VirtualBox on Windows as host, running
+# Linux VMon VirtualBox as guest with NAT and port forwarding enabled on Port
+# 3022. The goal is to not have to think about names, ports, &c., so the
+# preference is to edit parameters here rather than incorporate command-line
+# params. You should also set up private keys for SSH to avoid password
+# prompts, if possible. For a more detailed write-up, see:
+# http://corysalveson.com/post/headless-with-ubik/
+
+port=3022
+user="cory"
+machine_name="Ubuntu"
+machine_hostname="localhost"
+advice="Ubik ... Safe when taken as directed."
+
+# if VBoxManage exists, assume we're the host and activate/log in
+# if it does not, assume we're the guest, and exit
+echo $advice
+if [[ `which VBoxManage` ]]; then
+	# we're the host! let's become the guest.
+	
+	# check machine state. if not running, start it.
+	state="$(VBoxManage showvminfo $machine_name|grep State|awk '{print $2}' 2>&1)"
+	if [ $state != "running" ]; then
+		VBoxManage startvm $machine_name --type headless
+	fi
+
+	# SSH to the guest
+	echo "Attempting to SSH to VM \"$machine_name\"..."
+	ssh -C -p $port $user@$machine_hostname
+	
+	# when you return, check if the VM should be suspended now
+	while true; do
+		read -p "Return the VM to cryonic suspension? " yn
+		case $yn in
+			[Yy]* ) VBoxManage controlvm $machine_name savestate; break;;
+			[Nn]* ) echo "Don't forget to return the VM to cryonic suspension before you run out of Ubik!"; exit;;
+			* ) echo "Please answer yes or no.";;
+		esac
+	done
+else
+	# we're the guest! let's become the host.
+	exit
+fi
